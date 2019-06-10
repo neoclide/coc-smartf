@@ -1,0 +1,49 @@
+{
+  "name": "coc-smartf",
+  "version": "1.0.1",
+  "description": "Smart find extension for coc.nvim",
+  "main": "lib/index.js",
+  "publisher": "chemzqm",
+  "keywords": [
+    "coc.nvim",
+    "smartf"
+  ],
+  "engines": {
+    "coc": "^0.0.69"
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npx npm-run-all clean build"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "smartf.timeout": {
+          "type": "number",
+          "default": 1000,
+          "description": "Timeout for jump select."
+        }
+      }
+    }
+  },
+  "author": "chemzqm@gmail.com",
+  "license": "MIT",
+  "devDependencies": {
+    "@chemzqm/tsconfig": "^0.0.3",
+    "@chemzqm/tslint-config": "^1.0.18",
+    "@types/node": "^11.13.10",
+    "coc.nvim": "^0.0.69",
+    "rimraf": "^2.6.3",
+    "tslint": "^5.16.0",
+    "typescript": "^3.5.1"
+  },
+  "dependencies": {
+    "tslib": "^1.9.3",
+    "vscode-languageserver-types": "^3.14.0"
+  }
+}
