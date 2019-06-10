@@ -16,11 +16,26 @@ export default class Manager {
   private matchIds: number[] = []
   private positionMap: Map<string, Character> = new Map()
   private timeout: number
+  private changeLines: boolean
   private character: string
   private direction: 'forward' | 'backward' | null = null
+  private savedSyntax: string
+  private savedModified: number
+  private changeStart: number
+  private orignalLines: string[]
   constructor(private nvim: Neovim) {
     let config = workspace.getConfiguration('smartf')
     this.timeout = config.get<number>('timeout', 1000)
+    this.changeLines = config.get<boolean>('changeLines', false)
+    if (this.changeLines) {
+      nvim.call('hlexists', ['Smartf']).then(res => {
+        if (res == 0) {
+          nvim.command(`hi Smartf ctermfg=220 guifg=#6638F0`, true)
+        }
+      }).catch(_e => {
+        // noop
+      })
+    }
   }
 
   public async forward(): Promise<void> {
@@ -49,13 +64,21 @@ export default class Manager {
     nvim.call('line', ['w0'], true)
     nvim.call('getline', ['.'], true)
     nvim.call('eval', [`getline(line('w0'), line('w$'))`], true)
-    nvim.command(`setl conceallevel=2`, true)
+    nvim.call('eval', '&syntax', true)
+    nvim.call('eval', '&modified', true)
+    if (!this.changeLines) {
+      nvim.command(`setl conceallevel=2`, true)
+    }
     let [res, err] = await nvim.resumeNotification()
     if (err) {
       workspace.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
       return
     }
     let [cursor, startline, currline, lines] = res as [[number, number], number, string, string[]]
+    if (this.changeLines) {
+      this.savedSyntax = res[4]
+      this.savedModified = res[5]
+    }
     if (!isRepeat) {
       let character = await workspace.callAsync('coc#list#getchar', []) as string
       this.direction = isForward ? 'forward' : 'backward'
@@ -89,57 +112,83 @@ export default class Manager {
     }
     // parse positions
     let index = 0
+    let newLines: string[] = []
+    let orignalLines: string[] = []
+    let start: number
     if (isForward) {
+      start = cursor[0]
       let lineCount = startline + lines.length - cursor[0] - 1
       let arr = lines.slice(-lineCount)
       for (let i = 0; i < arr.length; i++) {
         let lnum = cursor[0] + i
         let line = arr[i]
+        orignalLines.push(line)
         let startIndex = i == 0 ? characterIndex(line, cursor[1]) + 1 : 0
+        let newLine = startIndex == 0 ? '' : line.slice(0, startIndex)
         for (let j = startIndex; j < line.length; j++) {
-          if (line[j] == character) {
-            let ch = characters[index]
-            if (!ch) break
+          let ch = characters[index]
+          if (line[j] == character && ch) {
             this.positionMap.set(ch, {
               character: ch,
               position: [lnum + 1, byteIndex(line, j) + 1]
             })
+            newLine += ch
             index = index + 1
+          } else {
+            newLine += line[j]
           }
         }
+        newLines.push(newLine)
       }
     } else {
+      start = startline - 1
       let lineCount = cursor[0] + 1 - startline + 1
       let arr = lines.slice(0, lineCount)
       for (let i = arr.length - 1; i >= 0; i--) {
         let lnum = startline + i - 1
         let line = arr[i]
+        orignalLines.unshift(line)
         let startIndex = i == arr.length - 1 ? characterIndex(line, cursor[1]) - 1 : line.length - 1
+        let newLine = startIndex == line.length - 1 ? '' : line.slice(startIndex + 1)
         for (let j = startIndex; j >= 0; j--) {
-          if (line[j] == character) {
-            let ch = characters[index]
-            if (!ch) break
+          let ch = characters[index]
+          if (line[j] == character && ch) {
             this.positionMap.set(ch, {
               character: ch,
               position: [lnum + 1, byteIndex(line, j) + 1]
             })
             index = index + 1
+            newLine = ch + newLine
+          } else {
+            newLine = line[j] + newLine
           }
         }
+        newLines.unshift(newLine)
       }
     }
-    // call matchaddpos('Conceal', [[3,2,1]], 10, 99,{'conceal': 'a'})
     if (!this.positionMap.size) return
+    this.orignalLines = orignalLines
     nvim.pauseNotification()
     nvim.command('silent doautocmd User SmartfEnter', true)
+    if (this.changeLines) {
+      this.changeStart = start + 1
+      nvim.call('setline', [start + 1, newLines], true)
+      nvim.setVar('coc_smartf_activated', 1, true)
+      nvim.command('set syntax=', true)
+    }
     for (let val of this.positionMap.values()) {
       let { position, character } = val
       let pos = [position[0], position[1], 1]
-      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: character }], true)
+      if (this.changeLines) {
+        nvim.call('matchaddpos', ['Smartf', [pos], 99, -1], true)
+      } else {
+        nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: character }], true)
+      }
+      nvim.call('matchaddpos', ['Cursor', [[cursor[0] + 1, cursor[1] + 1, 1]], 99], true)
     }
     let result = await nvim.resumeNotification()
     if (result[1]) return
-    this.matchIds = result[0]
+    this.matchIds = result[0].slice(this.changeLines ? 4 : 0)
     this.getCharacter().catch(e => {
       // tslint:disable-next-line: no-console
       console.error(e)
@@ -166,6 +215,14 @@ export default class Manager {
     let { nvim, matchIds } = this
     if (!matchIds.length) return
     nvim.pauseNotification()
+    if (this.orignalLines) {
+      nvim.command('undo', true)
+    }
+    if (this.savedSyntax) {
+      nvim.command(`set syntax=${this.savedSyntax}`, true)
+      nvim.command(`let &modified=${this.savedModified}`, true)
+    }
+    nvim.setVar('coc_smartf_activated', 0, true)
     nvim.command('silent doautocmd User SmartfLeave', true)
     nvim.call('coc#util#clearmatches', [this.matchIds], true)
     this.matchIds = []
