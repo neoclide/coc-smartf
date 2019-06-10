@@ -1,6 +1,6 @@
 {
   "name": "coc-smartf",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Smart find extension for coc.nvim",
   "main": "lib/index.js",
   "publisher": "chemzqm",
@@ -8,6 +8,10 @@
     "coc.nvim",
     "smartf"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neoclide/coc-smartf.git"
+  },
   "engines": {
     "coc": "^0.0.69"
   },
