@@ -32,6 +32,11 @@
           "default": 1000,
           "description": "Timeout for jump select."
         },
+        "smartf.jumpOnTrigger": {
+          "type": "boolean",
+          "default": true,
+          "description": "Jump to first available character on trigger."
+        },
         "smartf.changeLines": {
           "type": "boolean",
           "default": false,

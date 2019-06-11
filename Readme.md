@@ -6,11 +6,13 @@ Make jump to character easier.
 
 ## Install
 
-In your vim/neovim, run command:
+For [vim-plug](https://github.com/junegunn/vim-plug) user, add
 
+```vim
+Plug 'neoclide/coc-smartf'
 ```
-:CocInstall coc-smartf
-```
+
+to your init.vim, and run `:PlugUpdate`
 
 ## Usage
 

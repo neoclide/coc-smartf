@@ -17,6 +17,7 @@ export default class Manager {
   private positionMap: Map<string, Character> = new Map()
   private timeout: number
   private changeLines: boolean
+  private jumpOnTrigger: boolean
   private character: string
   private direction: 'forward' | 'backward' | null = null
   private savedSyntax: string
@@ -27,10 +28,11 @@ export default class Manager {
     let config = workspace.getConfiguration('smartf')
     this.timeout = config.get<number>('timeout', 1000)
     this.changeLines = config.get<boolean>('changeLines', false)
+    this.jumpOnTrigger = config.get<boolean>('jumpOnTrigger', true)
     if (this.changeLines) {
       nvim.call('hlexists', ['Smartf']).then(res => {
         if (res == 0) {
-          nvim.command(`hi Smartf ctermfg=220 guifg=#6638F0`, true)
+          nvim.command(`hi Smartf ctermfg=220 guifg=#fabd2f`, true)
         }
       }).catch(_e => {
         // noop
@@ -89,7 +91,7 @@ export default class Manager {
       // character not found
       return
     }
-    if (currline.indexOf(character) !== -1) {
+    if (this.jumpOnTrigger && currline.indexOf(character) !== -1) {
       if (isForward) {
         for (let i = cursor[1] + 1; i < currline.length; i++) {
           if (currline[i] == character) {
@@ -172,8 +174,9 @@ export default class Manager {
     nvim.command('silent doautocmd User SmartfEnter', true)
     if (this.changeLines) {
       this.changeStart = start + 1
-      nvim.call('setline', [start + 1, newLines], true)
       nvim.setVar('coc_smartf_activated', 1, true)
+      nvim.call('smartf#undo#save', [], true)
+      nvim.call('coc#util#setline', [start + 1, newLines], true)
       nvim.command('set syntax=', true)
     }
     for (let val of this.positionMap.values()) {
@@ -212,11 +215,12 @@ export default class Manager {
   }
 
   public async cancel(): Promise<void> {
-    let { nvim, matchIds } = this
+    let { nvim, matchIds, changeStart } = this
     if (!matchIds.length) return
     nvim.pauseNotification()
     if (this.orignalLines) {
-      nvim.command('undo', true)
+      nvim.call('coc#util#setline', [changeStart, this.orignalLines], true)
+      nvim.call('smartf#undo#restore', [], true)
     }
     if (this.savedSyntax) {
       nvim.command(`set syntax=${this.savedSyntax}`, true)
