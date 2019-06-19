@@ -5,3 +5,4 @@ tslint.json
 .DS_Store
 .ignore
 .netrwhist
+yarn.lock
