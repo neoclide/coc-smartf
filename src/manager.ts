@@ -106,6 +106,7 @@ export default class Manager {
     this.repeatPosition = remains[0]
     // parse positions
     nvim.pauseNotification()
+    nvim.command('silent! IndentLinesDisable', true)
     nvim.command('silent doautocmd User SmartfEnter', true)
     for (let val of this.positionMap.values()) {
       let {position, character} = val
@@ -154,6 +155,7 @@ export default class Manager {
     if (!matchIds.length) return
     nvim.pauseNotification()
     nvim.setVar('coc_smartf_activated', 0, true)
+    nvim.command('silent! IndentLinesEnable', true)
     nvim.command('silent doautocmd User SmartfLeave', true)
     nvim.call('coc#util#clearmatches', [this.matchIds], true)
     this.matchIds = []
