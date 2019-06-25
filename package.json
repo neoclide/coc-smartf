@@ -37,10 +37,10 @@
           "default": true,
           "description": "Jump to first available character on trigger."
         },
-        "smartf.changeLines": {
+        "smartf.wordJump": {
           "type": "boolean",
-          "default": false,
-          "description": "Change lines instead of use conceal highlight."
+          "default": true,
+          "description": "Consider first word character for jump only."
         }
       }
     }

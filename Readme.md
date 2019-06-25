@@ -6,13 +6,13 @@ Make jump to character easier.
 
 ## Install
 
-For [vim-plug](https://github.com/junegunn/vim-plug) user, add
+Run command:
 
 ```vim
-Plug 'neoclide/coc-smartf'
+:CocInstall coc-smartf
 ```
 
-to your init.vim, and run `:PlugUpdate`
+in your vim.
 
 ## Usage
 
@@ -31,7 +31,9 @@ augroup end
 
 ## Options
 
-- `smartf.timeout`: timeout for jump in miliseconds, default `1000`
+- `smartf.timeout`: timeout for jump in miliseconds, default `1000`.
+- `smartf.jumpOnTrigger`: Jump to first available character on trigger, default `true`.
+- `smartf.wordJump`: Consider first word character for jump only, default: `true`.
 
 ## Related
 

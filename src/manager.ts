@@ -1,11 +1,10 @@
-import { Neovim, workspace } from 'coc.nvim'
+import {Neovim, workspace} from 'coc.nvim'
+import {getPositions} from './util'
 
 const characters = [
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
   's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-  '[', ']', ";", "'", '"', ',', '.', '/', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-  'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-]
+  ',', '.']
 
 interface Character {
   position: [number, number]
@@ -16,28 +15,17 @@ export default class Manager {
   private matchIds: number[] = []
   private positionMap: Map<string, Character> = new Map()
   private timeout: number
-  private changeLines: boolean
-  private jumpOnTrigger: boolean
   private character: string
-  private direction: 'forward' | 'backward' | null = null
-  private savedSyntax: string
-  private savedModified: number
+  private isForward = true
   private changeStart: number
-  private orignalLines: string[]
+  private jumpOnTrigger: boolean
+  private wordJump: boolean
+  private repeatPosition: [number, number]
   constructor(private nvim: Neovim) {
     let config = workspace.getConfiguration('smartf')
     this.timeout = config.get<number>('timeout', 1000)
-    this.changeLines = config.get<boolean>('changeLines', false)
     this.jumpOnTrigger = config.get<boolean>('jumpOnTrigger', true)
-    if (this.changeLines) {
-      nvim.call('hlexists', ['Smartf']).then(res => {
-        if (res == 0) {
-          nvim.command(`hi Smartf ctermfg=220 guifg=#fabd2f`, true)
-        }
-      }).catch(_e => {
-        // noop
-      })
-    }
+    this.wordJump = config.get<boolean>('wordJump', true)
   }
 
   public async forward(): Promise<void> {
@@ -49,149 +37,89 @@ export default class Manager {
   }
 
   public async repeat(): Promise<void> {
-    if (!this.direction) return
-    await this.jump(this.direction == 'forward', true)
+    await this.jump(this.isForward, this.character)
   }
 
   public async repeatOpposite(): Promise<void> {
-    if (!this.direction) return
-    await this.jump(this.direction == 'backward', true)
+    await this.jump(!this.isForward, this.character)
   }
 
-  private async jump(isForward = true, isRepeat = false): Promise<void> {
-    let { nvim } = this
+  private async jump(isForward = true, character?: string): Promise<void> {
+    let {nvim} = this
     this.positionMap.clear()
     nvim.pauseNotification()
     nvim.call('coc#util#cursor', [], true)
     nvim.call('line', ['w0'], true)
     nvim.call('getline', ['.'], true)
     nvim.call('eval', [`getline(line('w0'), line('w$'))`], true)
-    nvim.call('eval', '&syntax', true)
-    nvim.call('eval', '&modified', true)
-    if (!this.changeLines) {
-      nvim.command(`setl conceallevel=2`, true)
-    }
+    nvim.command(`setl conceallevel=2`, true)
     let [res, err] = await nvim.resumeNotification()
     if (err) {
       workspace.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
       return
     }
     let [cursor, startline, currline, lines] = res as [[number, number], number, string, string[]]
-    if (this.changeLines) {
-      this.savedSyntax = res[4]
-      this.savedModified = res[5]
-    }
-    if (!isRepeat) {
-      let character = await workspace.callAsync('coc#list#getchar', []) as string
-      this.direction = isForward ? 'forward' : 'backward'
+    if (!character) {
+      character = await workspace.callAsync('coc#list#getchar', []) as string
+      this.isForward = isForward
       this.character = character
     }
-    let { character } = this
-    if (lines.join('').indexOf(character) == -1) {
-      // character not found
-      return
-    }
-    if (this.jumpOnTrigger && currline.indexOf(character) !== -1) {
-      if (isForward) {
-        for (let i = cursor[1] + 1; i < currline.length; i++) {
-          if (currline[i] == character) {
-            let col = Buffer.byteLength(currline.slice(0, i)) + 1
-            cursor[1] = i
-            await nvim.call('cursor', [cursor[0] + 1, col])
-            break
-          }
-        }
-      } else {
-        for (let i = cursor[1] - 1; i >= 0; i--) {
-          if (currline[i] == character) {
-            let col = Buffer.byteLength(currline.slice(0, i)) + 1
-            cursor[1] = i
-            await nvim.call('cursor', [cursor[0] + 1, col])
-            break
-          }
-        }
-      }
-    }
-    // parse positions
-    let index = 0
-    let newLines: string[] = []
-    let orignalLines: string[] = []
-    let start: number
-    if (isForward) {
-      start = cursor[0]
-      let lineCount = startline + lines.length - cursor[0] - 1
-      let arr = lines.slice(-lineCount)
-      for (let i = 0; i < arr.length; i++) {
-        let lnum = cursor[0] + i
-        let line = arr[i]
-        orignalLines.push(line)
-        let startIndex = i == 0 ? characterIndex(line, cursor[1]) + 1 : 0
-        let newLine = startIndex == 0 ? '' : line.slice(0, startIndex)
-        for (let j = startIndex; j < line.length; j++) {
-          let ch = characters[index]
-          if (line[j] == character && ch) {
-            this.positionMap.set(ch, {
-              character: ch,
-              position: [lnum + 1, byteIndex(line, j) + 1]
-            })
-            newLine += ch
-            index = index + 1
-          } else {
-            newLine += line[j]
-          }
-        }
-        newLines.push(newLine)
-      }
+    let offset = 0
+    // create new lines
+    if (!isForward) {
+      let count = cursor[0] - (startline - 1) + 1
+      lines = lines.slice(0, count)
+      lines[lines.length - 1] = currline.slice(0, cursor[1])
     } else {
-      start = startline - 1
-      let lineCount = cursor[0] + 1 - startline + 1
-      let arr = lines.slice(0, lineCount)
-      for (let i = arr.length - 1; i >= 0; i--) {
-        let lnum = startline + i - 1
-        let line = arr[i]
-        orignalLines.unshift(line)
-        let startIndex = i == arr.length - 1 ? characterIndex(line, cursor[1]) - 1 : line.length - 1
-        let newLine = startIndex == line.length - 1 ? '' : line.slice(startIndex + 1)
-        for (let j = startIndex; j >= 0; j--) {
-          let ch = characters[index]
-          if (line[j] == character && ch) {
-            this.positionMap.set(ch, {
-              character: ch,
-              position: [lnum + 1, byteIndex(line, j) + 1]
-            })
-            index = index + 1
-            newLine = ch + newLine
-          } else {
-            newLine = line[j] + newLine
-          }
-        }
-        newLines.unshift(newLine)
+      offset = cursor[1] + 1
+      lines = lines.slice(cursor[0] - (startline - 1))
+    }
+    let positions = getPositions(character, lines, this.wordJump, offset)
+    if (positions.length == 0) return
+    if (!isForward) positions.reverse()
+    // jump to first when necessary
+    let currpos: [number, number]
+    if (this.jumpOnTrigger) {
+      let first = positions.shift()
+      let col = byteIndex(lines[first.line], first.character) + 1
+      let line = startline + first.line + (isForward ? cursor[0] + 1 - startline : 0)
+      await nvim.call('cursor', [line, col])
+      currpos = [line, col]
+    } else {
+      let [, line, col] = await nvim.call('getpos', ['.']) as number[]
+      currpos = [line, col]
+    }
+    if (positions.length == 0) return
+    this.positionMap.clear()
+    let remains: [number, number][] = []
+    for (let i = 0; i < positions.length; i++) {
+      let pos = positions[i]
+      let ch = characters[i]
+      let line = startline + pos.line + (isForward ? cursor[0] + 1 - startline : 0)
+      let col = byteIndex(lines[pos.line], pos.character) + 1
+      if (ch) {
+        this.positionMap.set(ch, {character: ch, position: [line, col]})
+      } else {
+        remains.push([line, col])
       }
     }
-    if (!this.positionMap.size) return
-    this.orignalLines = orignalLines
+    this.repeatPosition = remains[0]
+    // parse positions
     nvim.pauseNotification()
     nvim.command('silent doautocmd User SmartfEnter', true)
-    if (this.changeLines) {
-      this.changeStart = start + 1
-      nvim.setVar('coc_smartf_activated', 1, true)
-      nvim.call('smartf#undo#save', [], true)
-      nvim.call('coc#util#setline', [start + 1, newLines], true)
-      nvim.command('set syntax=', true)
-    }
     for (let val of this.positionMap.values()) {
-      let { position, character } = val
+      let {position, character} = val
       let pos = [position[0], position[1], 1]
-      if (this.changeLines) {
-        nvim.call('matchaddpos', ['Smartf', [pos], 99, -1], true)
-      } else {
-        nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: character }], true)
-      }
-      nvim.call('matchaddpos', ['Cursor', [[cursor[0] + 1, cursor[1] + 1, 1]], 99], true)
+      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, {conceal: character}], true)
+    }
+    nvim.call('matchaddpos', ['Cursor', [[currpos[0], currpos[1], 1]], 99], true)
+    for (let val of remains) {
+      let pos = [val[0], val[1], 1]
+      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, {conceal: ';'}], true)
     }
     let result = await nvim.resumeNotification()
     if (result[1]) return
-    this.matchIds = result[0].slice(this.changeLines ? 4 : 0)
+    this.matchIds = result[0]
     this.getCharacter().catch(e => {
       // tslint:disable-next-line: no-console
       console.error(e)
@@ -208,24 +136,23 @@ export default class Manager {
     }, this.timeout || 1000)
     let ch = await p as string
     finished = true
-    let val = this.positionMap.get(ch)
-    await this.cancel()
-    if (!val) return
-    this.nvim.call('cursor', val.position, true)
+    if (ch == ';' && this.repeatPosition) {
+      await this.cancel()
+      this.nvim.call('cursor', this.repeatPosition, true)
+      this.jump(this.isForward, this.character).catch(_e => {
+        // noop
+      })
+    } else {
+      let val = this.positionMap.get(ch)
+      await this.cancel()
+      if (val) this.nvim.call('cursor', val.position, true)
+    }
   }
 
   public async cancel(): Promise<void> {
-    let { nvim, matchIds, changeStart } = this
+    let {nvim, matchIds, changeStart} = this
     if (!matchIds.length) return
     nvim.pauseNotification()
-    if (this.orignalLines) {
-      nvim.call('coc#util#setline', [changeStart, this.orignalLines], true)
-      nvim.call('smartf#undo#restore', [], true)
-    }
-    if (this.savedSyntax) {
-      nvim.command(`set syntax=${this.savedSyntax}`, true)
-      nvim.command(`let &modified=${this.savedModified}`, true)
-    }
     nvim.setVar('coc_smartf_activated', 0, true)
     nvim.command('silent doautocmd User SmartfLeave', true)
     nvim.call('coc#util#clearmatches', [this.matchIds], true)
