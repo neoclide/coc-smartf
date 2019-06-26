@@ -1,5 +1,5 @@
-import {Neovim, workspace} from 'coc.nvim'
-import {getPositions} from './util'
+import { Neovim, workspace } from 'coc.nvim'
+import { getPositions } from './util'
 
 const characters = [
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -18,6 +18,7 @@ export default class Manager {
   private character: string
   private isForward = true
   private changeStart: number
+  private conceallevel = 0
   private jumpOnTrigger: boolean
   private wordJump: boolean
   private repeatPosition: [number, number]
@@ -45,20 +46,23 @@ export default class Manager {
   }
 
   private async jump(isForward = true, character?: string): Promise<void> {
-    let {nvim} = this
+    let { nvim } = this
     this.positionMap.clear()
     nvim.pauseNotification()
     nvim.call('coc#util#cursor', [], true)
     nvim.call('line', ['w0'], true)
     nvim.call('getline', ['.'], true)
     nvim.call('eval', [`getline(line('w0'), line('w$'))`], true)
+    nvim.call('eval', ['&conceallevel'], true)
+    nvim.command('silent! IndentLinesDisable', true)
     nvim.command(`setl conceallevel=2`, true)
     let [res, err] = await nvim.resumeNotification()
     if (err) {
       workspace.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
       return
     }
-    let [cursor, startline, currline, lines] = res as [[number, number], number, string, string[]]
+    let [cursor, startline, currline, lines, conceallevel] = res as [[number, number], number, string, string[], number]
+    this.conceallevel = conceallevel
     if (!character) {
       character = await workspace.callAsync('coc#list#getchar', []) as string
       this.isForward = isForward
@@ -98,7 +102,7 @@ export default class Manager {
       let line = startline + pos.line + (isForward ? cursor[0] + 1 - startline : 0)
       let col = byteIndex(lines[pos.line], pos.character) + 1
       if (ch) {
-        this.positionMap.set(ch, {character: ch, position: [line, col]})
+        this.positionMap.set(ch, { character: ch, position: [line, col] })
       } else {
         remains.push([line, col])
       }
@@ -106,17 +110,16 @@ export default class Manager {
     this.repeatPosition = remains[0]
     // parse positions
     nvim.pauseNotification()
-    nvim.command('silent! IndentLinesDisable', true)
     nvim.command('silent doautocmd User SmartfEnter', true)
     for (let val of this.positionMap.values()) {
-      let {position, character} = val
+      let { position, character } = val
       let pos = [position[0], position[1], 1]
-      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, {conceal: character}], true)
+      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: character }], true)
     }
     nvim.call('matchaddpos', ['Cursor', [[currpos[0], currpos[1], 1]], 99], true)
     for (let val of remains) {
       let pos = [val[0], val[1], 1]
-      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, {conceal: ';'}], true)
+      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: ';' }], true)
     }
     let result = await nvim.resumeNotification()
     if (result[1]) return
@@ -151,10 +154,11 @@ export default class Manager {
   }
 
   public async cancel(): Promise<void> {
-    let {nvim, matchIds, changeStart} = this
+    let { nvim, matchIds, changeStart } = this
     if (!matchIds.length) return
     nvim.pauseNotification()
     nvim.setVar('coc_smartf_activated', 0, true)
+    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
     nvim.command('silent! IndentLinesEnable', true)
     nvim.command('silent doautocmd User SmartfLeave', true)
     nvim.call('coc#util#clearmatches', [this.matchIds], true)
