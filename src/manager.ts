@@ -114,12 +114,12 @@ export default class Manager {
     for (let val of this.positionMap.values()) {
       let { position, character } = val
       let pos = [position[0], position[1], 1]
-      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: character }], true)
+      nvim.call('matchaddpos', ['Conceal', [pos], 999, -1, { conceal: character }], true)
     }
     nvim.call('matchaddpos', ['Cursor', [[currpos[0], currpos[1], 1]], 99], true)
     for (let val of remains) {
       let pos = [val[0], val[1], 1]
-      nvim.call('matchaddpos', ['Conceal', [pos], 99, -1, { conceal: ';' }], true)
+      nvim.call('matchaddpos', ['Conceal', [pos], 999, -1, { conceal: ';' }], true)
     }
     let result = await nvim.resumeNotification()
     if (result[1]) return
