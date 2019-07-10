@@ -19,6 +19,7 @@ export default class Manager {
   private isForward = true
   private changeStart: number
   private conceallevel = 0
+  private concealcursor = ''
   private jumpOnTrigger: boolean
   private wordJump: boolean
   private repeatPosition: [number, number]
@@ -54,15 +55,18 @@ export default class Manager {
     nvim.call('getline', ['.'], true)
     nvim.call('eval', [`getline(line('w0'), line('w$'))`], true)
     nvim.call('eval', ['&conceallevel'], true)
+    nvim.call('eval', ['&concealcursor'], true)
     nvim.command('silent! IndentLinesDisable', true)
     nvim.command(`setl conceallevel=2`, true)
+    nvim.command(`setl concealcursor=n`, true)
     let [res, err] = await nvim.resumeNotification()
     if (err) {
       workspace.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
       return
     }
-    let [cursor, startline, currline, lines, conceallevel] = res as [[number, number], number, string, string[], number]
+    let [cursor, startline, currline, lines, conceallevel, concealcursor] = res as [[number, number], number, string, string[], number, string]
     this.conceallevel = conceallevel
+    this.concealcursor = concealcursor
     if (!character) {
       character = await workspace.callAsync('coc#list#getchar', []) as string
       this.isForward = isForward
@@ -159,6 +163,7 @@ export default class Manager {
     nvim.pauseNotification()
     nvim.setVar('coc_smartf_activated', 0, true)
     nvim.command(`setl conceallevel=${this.conceallevel}`, true)
+    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     nvim.command('silent! IndentLinesEnable', true)
     nvim.command('silent doautocmd User SmartfLeave', true)
     nvim.call('coc#util#clearmatches', [this.matchIds], true)
