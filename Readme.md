@@ -31,7 +31,7 @@ augroup end
 
 ## Options
 
-- `smartf.timeout`: timeout for jump in miliseconds, default `1000`.
+- `smartf.timeout`: timeout for jump in milliseconds, default `1000`.
 - `smartf.jumpOnTrigger`: Jump to first available character on trigger, default `true`.
 - `smartf.wordJump`: Consider first word character for jump only, default: `true`.
 
