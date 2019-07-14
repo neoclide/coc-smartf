@@ -13,7 +13,7 @@
     "url": "git+https://github.com/neoclide/coc-smartf.git"
   },
   "engines": {
-    "coc": "^0.0.69"
+    "coc": "^0.0.73"
   },
   "scripts": {
     "clean": "rimraf lib",
