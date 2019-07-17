@@ -1,7 +1,7 @@
 import { Neovim, workspace } from 'coc.nvim'
 import { getPositions } from './util'
 
-const characters = [
+let characters = [
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
   's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
   ',', '.']
@@ -25,8 +25,13 @@ export default class Manager {
   private jumpOnTrigger: boolean
   private wordJump: boolean
   private repeatPosition: [number, number]
+  private charsIgnoreByNavigator: string[] = []
   constructor(private nvim: Neovim) {
     let config = workspace.getConfiguration('smartf')
+    this.charsIgnoreByNavigator = config.get<string[]>('charactersIgnoreByNavigator', [])
+    characters = characters.filter(c => {
+      return this.charsIgnoreByNavigator.indexOf(c) === -1
+    })
     this.timeout = config.get<number>('timeout', 1000)
     this.jumpOnTrigger = config.get<boolean>('jumpOnTrigger', true)
     this.wordJump = config.get<boolean>('wordJump', true)
@@ -156,7 +161,10 @@ export default class Manager {
     }, this.timeout || 1000)
     let ch = await p as string
     finished = true
-    if (ch == ';' && this.repeatPosition) {
+    if (this.charsIgnoreByNavigator.indexOf(ch) !== -1) {
+      await this.cancel()
+      this.nvim.command(`call feedkeys("${ch}", 'in')`, true)
+    } else if (ch == ';' && this.repeatPosition) {
       await this.cancel()
       this.nvim.call('cursor', this.repeatPosition, true)
       this.jump(this.isForward, this.character).catch(_e => {
