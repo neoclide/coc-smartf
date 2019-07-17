@@ -41,6 +41,11 @@
           "type": "boolean",
           "default": true,
           "description": "Consider first word character for jump only."
+        },
+        "smartf.charactersIgnoreByNavigator": {
+          "type": "array",
+          "default": [],
+          "description": "Characters will not become a character for navigator"
         }
       }
     }
