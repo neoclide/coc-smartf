@@ -36,6 +36,11 @@ augroup end
 - `smartf.wordJump`: Consider first word character for jump only, default: `true`.
 - `smartf.charactersIgnoreByNavigator`: Characters will not become a character for navigator, default: [].
 
+## FAQ
+# When using coc-smartf in JSON files the quotes of the JSON key & values come and go, why?
+
+You need to disable neovim's built-in JSON syntax and conceal feature (it can automatically hide quotes). Put `au BufRead,BufNewFile *.json setfiletype disabled` at the beginning of your `init.vim`. Setting the conceallevel to 0 doesn't work.
+
 ## Related
 
 - [vim-sneak](https://github.com/justinmk/vim-sneak)
