@@ -56,7 +56,7 @@ export default class Manager {
     let { nvim } = this
     this.positionMap.clear()
     let ids = await nvim.eval('get(w:,"indentLine_indentLineId",0)')
-    this.hasIndentLine = Array.isArray(ids)
+    this.hasIndentLine = Array.isArray(ids) && ids.length > 0
     nvim.pauseNotification()
     nvim.call('coc#util#cursor', [], true)
     nvim.call('line', ['w0'], true)
