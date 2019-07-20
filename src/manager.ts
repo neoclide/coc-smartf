@@ -19,7 +19,6 @@ export default class Manager {
   private timeout: number
   private character: string
   private isForward = true
-  private changeStart: number
   private conceallevel = 0
   private concealcursor = ''
   private jumpOnTrigger: boolean
@@ -95,7 +94,10 @@ export default class Manager {
       lines = lines.slice(cursor[0] - (startline - 1))
     }
     let positions = getPositions(character, lines, this.wordJump, offset)
-    if (positions.length == 0) return
+    if (positions.length == 0) {
+      await this.reset()
+      return
+    }
     if (!isForward) positions.reverse()
     // jump to first when necessary
     let currpos: [number, number]
@@ -177,8 +179,20 @@ export default class Manager {
     }
   }
 
+  private async reset(): Promise<void> {
+    this.activated = false
+    let { nvim } = this
+    nvim.pauseNotification()
+    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
+    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
+    if (this.hasIndentLine) {
+      nvim.command('silent! IndentLinesEnable', true)
+    }
+    await nvim.resumeNotification()
+  }
+
   public async cancel(): Promise<void> {
-    let { nvim, matchIds, changeStart } = this
+    let { nvim, matchIds } = this
     if (!this.activated) return
     this.activated = false
     nvim.pauseNotification()
@@ -194,11 +208,6 @@ export default class Manager {
     this.matchIds = []
     await nvim.resumeNotification()
   }
-}
-
-function characterIndex(content: string, byteIndex: number): number {
-  let buf = Buffer.from(content, 'utf8')
-  return buf.slice(0, byteIndex).toString('utf8').length
 }
 
 function byteIndex(content: string, index: number): number {
