@@ -182,12 +182,12 @@ export default class Manager {
   private async reset(): Promise<void> {
     this.activated = false
     let { nvim } = this
-    nvim.pauseNotification()
-    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
-    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     if (this.hasIndentLine) {
       nvim.command('silent! IndentLinesEnable', true)
     }
+    nvim.pauseNotification()
+    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
+    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     await nvim.resumeNotification()
   }
 
@@ -196,11 +196,11 @@ export default class Manager {
     if (!this.activated) return
     this.activated = false
     nvim.pauseNotification()
-    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
-    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     if (this.hasIndentLine) {
       nvim.command('silent! IndentLinesEnable', true)
     }
+    nvim.command(`setl conceallevel=${this.conceallevel}`, true)
+    nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     nvim.call('coc#util#do_autocmd', ['SmartfLeave'], true)
     if (matchIds.length) {
       nvim.call('coc#util#clearmatches', [this.matchIds], true)
