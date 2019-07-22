@@ -64,6 +64,7 @@ export default class Manager {
     nvim.call('eval', [`getline(line('w0'), line('w$'))`], true)
     nvim.call('eval', ['&conceallevel'], true)
     nvim.call('eval', ['&concealcursor'], true)
+    nvim.command(`normal! m'`, true)
     if (this.hasIndentLine) {
       nvim.command('silent! IndentLinesDisable', true)
     }
