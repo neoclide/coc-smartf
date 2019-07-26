@@ -112,7 +112,10 @@ export default class Manager {
       let [, line, col] = await nvim.call('getpos', ['.']) as number[]
       currpos = [line, col]
     }
-    if (positions.length == 0) return
+    if (positions.length == 0) {
+      await this.reset()
+      return
+    }
     this.positionMap.clear()
     let remains: [number, number][] = []
     for (let i = 0; i < positions.length; i++) {
