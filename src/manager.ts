@@ -270,13 +270,13 @@ export default class Manager {
         }
 
         [this.matchIds] = result;
-        this.getCharacter().catch((e) => {
+        this.getCharacter(jumpOnTrigger).catch((e) => {
             // tslint:disable-next-line: no-console
             console.error(e);
         });
     }
 
-    private async getCharacter(): Promise<void> {
+    private async getCharacter(jumpOnTrigger): Promise<void> {
         const p = workspace.callAsync('coc#list#getchar', []);
         let finished = false;
 
