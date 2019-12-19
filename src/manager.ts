@@ -348,7 +348,7 @@ export default class Manager {
 
     public async repeat(): Promise<void> {
         await this.jump(
-            !this.jumpOnRepeat,
+            this.jumpOnRepeat,
             this.isForward,
             this.isFind,
             this.character,
@@ -357,7 +357,7 @@ export default class Manager {
 
     public async repeatOpposite(): Promise<void> {
         await this.jump(
-            !this.jumpOnRepeat,
+            this.jumpOnRepeat,
             !this.isForward,
             this.isFind,
             this.character,
