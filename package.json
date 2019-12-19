@@ -37,6 +37,11 @@
           "default": true,
           "description": "Jump to first available character on trigger."
         },
+        "smartf.jumpOnRepeat": {
+          "type": "boolean",
+          "default": true,
+          "description": "Jump to first available character on repeat."
+        },
         "smartf.wordJump": {
           "type": "boolean",
           "default": true,

@@ -62,6 +62,7 @@ export default class Manager {
     private conceallevel = 0;
     private concealcursor = '';
     private jumpOnTrigger: boolean;
+    private jumpOnRepeat: boolean;
     private wordJump: boolean;
     private repeatPosition: [number, number];
     private charsIgnoreByNavigator: string[] = [];
@@ -78,6 +79,7 @@ export default class Manager {
 
         this.timeout = config.get<number>('timeout', 1000);
         this.jumpOnTrigger = config.get<boolean>('jumpOnTrigger', true);
+        this.jumpOnRepeat = config.get<boolean>('jumpOnRepeat', true);
         this.wordJump = config.get<boolean>('wordJump', true);
         this.characters = config.get<string[]>(
             'characters',
@@ -88,6 +90,7 @@ export default class Manager {
     }
 
     private async jump(
+        jumpOnTrigger,
         isForward = true,
         isFind = 1,
         character?: string,
@@ -179,7 +182,7 @@ export default class Manager {
 
         // jump to first when necessary
         let currpos: [number, number];
-        if (this.jumpOnTrigger) {
+        if (jumpOnTrigger) {
             const first = positions.shift();
             const col =
                 byteIndex(llines[first.line], first.character) + this.isFind;
@@ -323,27 +326,37 @@ export default class Manager {
     }
 
     public async fforward(): Promise<void> {
-        await this.jump();
+        await this.jump(this.jumpOnTrigger);
     }
 
     public async fbackward(): Promise<void> {
-        await this.jump(false);
+        await this.jump(this.jumpOnTrigger, false);
     }
 
     public async tforward(): Promise<void> {
-        await this.jump(true, 0);
+        await this.jump(this.jumpOnTrigger, true, 0);
     }
 
     public async tbackward(): Promise<void> {
-        await this.jump(false, 0);
+        await this.jump(this.jumpOnTrigger, false, 0);
     }
 
     public async repeat(): Promise<void> {
-        await this.jump(this.isForward, this.isFind, this.character);
+        await this.jump(
+            this.jumpOnRepeat,
+            this.isForward,
+            this.isFind,
+            this.character,
+        );
     }
 
     public async repeatOpposite(): Promise<void> {
-        await this.jump(!this.isForward, this.isFind, this.character);
+        await this.jump(
+            this.jumpOnRepeat,
+            !this.isForward,
+            this.isFind,
+            this.character,
+        );
     }
 
     public async cancel(): Promise<void> {
