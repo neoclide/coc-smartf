@@ -90,7 +90,7 @@ export default class Manager {
     }
 
     private async jump(
-        jumpOnTrigger,
+        jumpOnTrigger: boolean,
         isForward = true,
         isFind = 1,
         character?: string,
@@ -298,7 +298,12 @@ export default class Manager {
         } else if (ch === ';' && this.repeatPosition) {
             await this.cancel();
             this.nvim.call('cursor', this.repeatPosition, true);
-            this.jump(this.isForward, this.isFind, this.character).catch(() => {
+            this.jump(
+                jumpOnTrigger,
+                this.isForward,
+                this.isFind,
+                this.character,
+            ).catch(() => {
                 // noop
             });
         } else {
@@ -343,7 +348,7 @@ export default class Manager {
 
     public async repeat(): Promise<void> {
         await this.jump(
-            this.jumpOnRepeat,
+            !this.jumpOnRepeat,
             this.isForward,
             this.isFind,
             this.character,
@@ -352,7 +357,7 @@ export default class Manager {
 
     public async repeatOpposite(): Promise<void> {
         await this.jump(
-            this.jumpOnRepeat,
+            !this.jumpOnRepeat,
             !this.isForward,
             this.isFind,
             this.character,
