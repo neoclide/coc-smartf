@@ -23,6 +23,7 @@ export default class Manager {
   private concealcursor = ''
   private jumpOnTrigger: boolean
   private wordJump: boolean
+  private singleCharacterJump: boolean
   private repeatPosition: [number, number]
   private charsIgnoreByNavigator: string[] = []
   constructor(private nvim: Neovim) {
@@ -34,6 +35,7 @@ export default class Manager {
     this.timeout = config.get<number>('timeout', 1000)
     this.jumpOnTrigger = config.get<boolean>('jumpOnTrigger', true)
     this.wordJump = config.get<boolean>('wordJump', true)
+    this.singleCharacterJump = config.get<boolean>('singleCharacterJump', false)
   }
 
   public async forward(): Promise<void> {
@@ -114,6 +116,9 @@ export default class Manager {
     }
     if (positions.length == 0) {
       await this.reset()
+      return
+    }
+    if (this.singleCharacterJump) {
       return
     }
     this.positionMap.clear()
