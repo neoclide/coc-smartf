@@ -1,4 +1,4 @@
-import { Neovim, workspace } from 'coc.nvim'
+import { Neovim, window, workspace } from 'coc.nvim'
 import { getPositions } from './util'
 
 let characters = [
@@ -76,7 +76,7 @@ export default class Manager {
     nvim.command(`setl concealcursor=n`, true)
     let [res, err] = await nvim.resumeNotification()
     if (err) {
-      workspace.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
+      window.showMessage(`Error on ${err[0]}: ${err[1]} - ${err[2]}`, 'error')
       return
     }
     this.activated = true
