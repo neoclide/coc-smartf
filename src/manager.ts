@@ -17,6 +17,7 @@ export default class Manager {
   private hasIndentLine = false
   private positionMap: Map<string, Character> = new Map()
   private timeout: number
+  private winid: number
   private character: string
   private isForward = true
   private conceallevel = 0
@@ -60,6 +61,7 @@ export default class Manager {
     let ids = await nvim.eval('get(w:,"indentLine_indentLineId",0)')
     this.hasIndentLine = Array.isArray(ids) && ids.length > 0
     nvim.pauseNotification()
+    nvim.call('win_getid', [], true)
     nvim.call('coc#util#cursor', [], true)
     nvim.call('line', ['w0'], true)
     nvim.call('getline', ['.'], true)
@@ -78,7 +80,8 @@ export default class Manager {
       return
     }
     this.activated = true
-    let [cursor, startline, currline, lines, conceallevel, concealcursor] = res as [[number, number], number, string, string[], number, string]
+    let [winid, cursor, startline, currline, lines, conceallevel, concealcursor] = res as any
+    this.winid = winid
     this.conceallevel = conceallevel
     this.concealcursor = concealcursor
     if (!character) {
@@ -201,7 +204,7 @@ export default class Manager {
   }
 
   public async cancel(): Promise<void> {
-    let { nvim, matchIds } = this
+    let { nvim, matchIds, winid } = this
     if (!this.activated) return
     this.activated = false
     nvim.pauseNotification()
@@ -211,7 +214,7 @@ export default class Manager {
     nvim.command(`setl conceallevel=${this.conceallevel}`, true)
     nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     nvim.call('coc#util#do_autocmd', ['SmartfLeave'], true)
-    if (matchIds.length) {
+    if (matchIds.length && winid) {
       nvim.call('coc#util#clearmatches', [this.matchIds], true)
     }
     this.matchIds = []
