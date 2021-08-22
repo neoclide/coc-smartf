@@ -215,7 +215,7 @@ export default class Manager {
     nvim.command(`setl concealcursor=${this.concealcursor}`, true)
     nvim.call('coc#util#do_autocmd', ['SmartfLeave'], true)
     if (matchIds.length && winid) {
-      nvim.call('coc#util#clearmatches', [this.matchIds], true)
+      nvim.call('coc#highlight#clear_matches', [this.winid, this.matchIds], true)
     }
     this.matchIds = []
     await nvim.resumeNotification()
